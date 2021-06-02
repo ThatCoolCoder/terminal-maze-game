@@ -6,12 +6,20 @@ class Block:
         self.y = y
         self.char = char
     
-    def draw(self, scr):
-        scr.move(self.y, self.x)
-        scr.addch(self.char)
+    def draw(self, scr, pan_x=0, pan_y=0):
+        # Drawing outside the screen will throw an error so catch that
+        try:
+            scr.move(self.y - pan_y, self.x - pan_x)
+            scr.addch(self.char)
+        except:
+            pass
+    
+    def get_true_pos(self, pan_x=0, pan_y=0):
+        return (self.x - pan_x, self.y - pan_y)
 
 class WallBlock(Block):
     def __init__(self, x:int, y:int):
+        # \u2588 is a filled-in-rectangle character
         super().__init__(x, y, '\u2588')
 
 class DeathBlock(Block):
