@@ -28,7 +28,7 @@ class DeathBlock(Block):
 
 class Player(Block):
     def __init__(self, x:int, y:int):
-        super().__init__(x, y, '@')
+        super().__init__(x, y, '0')
         self.alive = True
         self.health = 1
     

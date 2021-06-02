@@ -6,10 +6,13 @@ from blocks import *
 from maze_generation import generate_maze
 
 # setup player
-player = Player(1, 1)
+player = Player(5, 5)
 
 # Pan when this close to a wall
-PAN_TRIGGER_DIST = 3
+PAN_TRIGGER_DIST = 4
+
+# Move this far each time pan is triggered
+PAN_INCREMENT = 4
 
 pan_x = 0
 pan_y = 0
@@ -33,13 +36,13 @@ def pan_to_player():
     global pan_x, pan_y
     true_x, true_y = player.get_true_pos(pan_x, pan_y)
     if true_x < PAN_TRIGGER_DIST:
-        pan_x -= SCREEN_WIDTH // 2
+        pan_x -= PAN_INCREMENT
     elif true_x >= SCREEN_WIDTH - PAN_TRIGGER_DIST:
-        pan_x += SCREEN_WIDTH // 2
+        pan_x += PAN_INCREMENT
     if true_y < PAN_TRIGGER_DIST:
-        pan_y -= SCREEN_HEIGHT // 2
+        pan_y -= PAN_INCREMENT
     elif true_y >= SCREEN_HEIGHT - PAN_TRIGGER_DIST:
-        pan_y += SCREEN_HEIGHT // 2
+        pan_y += PAN_INCREMENT
 
 stdscr = curses.initscr()
 stdscr.keypad(True)
