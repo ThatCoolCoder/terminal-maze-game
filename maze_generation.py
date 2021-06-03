@@ -1,7 +1,8 @@
 import random
 from dataclasses import dataclass
 
-from blocks import *
+from tiles import *
+from misc import *
 
 MIN_ROOMS = 40
 MAX_ROOMS = 80
@@ -13,9 +14,13 @@ MAX_X = 250
 MAX_Y = 100
 
 MIN_CONNECTIONS_PER_ROOM = 1
-MAX_CONNECTIONS_PER_ROOM = 4
+MAX_CONNECTIONS_PER_ROOM = 2
 
-DEATH_BLOCK_DENSITY = 1 / 30
+MAX_PASSAGE_LENGTH = 80
+
+DEATH_TILE_DENSITY = 1 / 30
+MIN_ENEMIES_PER_ROOM = 1
+MAX_ENEMIES_PER_ROOM = 3
 
 PASSAGE_WIDTH = 5
 
@@ -27,26 +32,42 @@ class Room:
     height: int
 
     @property
+    def center_x(self):
+        return self.x + self.width // 2
+
+    @property
+    def center_y(self):
+        return self.y + self.height // 2
+
+    @property
     def right_x(self):
         return self.x + self.width
 
     @property
     def bottom_y(self):
         return self.y + self.height
+    
+    @property
+    def area(self):
+        return self.width * self.height
 
 @dataclass
 class Passage:
-    start: Room
-    end: Room
+    start_x: int
+    start_y: int
+    end_x: int
+    end_y: int
 
 def generate_maze():
     rooms = generate_rooms()
-    passages = generate_passages(rooms)
-    blocks = generate_blocks(rooms, passages)
-    blocks += generate_death_blocks()
-    return blocks
+    start_x, start_y = generate_start_point(rooms)
+    tiles = generate_tiles(rooms)
+    tiles += generate_death_tiles(rooms)
+    tiles += generate_enemies(rooms)
+    return start_x, start_y, tiles
 
 def generate_rooms():
+    # This will generate a bunch of Room objects which do not intersect or touch
     rooms = []
     room_count = random.randint(MIN_ROOMS, MAX_ROOMS)
     for room_num in range(room_count):
@@ -56,82 +77,184 @@ def generate_rooms():
         room_y = random.randint(0, MAX_Y)
         new_room = Room(room_x, room_y, room_width, room_height)
 
-        if not any(rooms_intersect(room, new_room) for room in rooms):
+        if not any(rooms_touch(room, new_room) for room in rooms):
             rooms.append(new_room)
     return rooms
 
-def rooms_intersect(room_1, room_2):
-    return room_1.right_x >= room_2.x and \
-        room_1.x <= room_2.right_x and \
-        room_1.bottom_y >= room_2.y and \
-        room_1.y <= room_2.bottom_y
+def rooms_touch(room_1, room_2):
+    # Whether the two rooms overlap or touch by an edge
+    # There are +1's everywhere to stop them from touching by an edge
+    return room_1.right_x + 1 >= room_2.x and \
+        room_1.x <= room_2.right_x + 1 and \
+        room_1.bottom_y + 1 >= room_2.y and \
+        room_1.y <= room_2.bottom_y + 1
 
-def generate_passages(rooms):
-    passages = []
+def generate_start_point(rooms):
+    # If there are no rooms then give up
+    if len(rooms) == 0:
+        return (0, 0)
+    # Else choose a random room and start in the middle of it
+    else:
+        room = random.choice(rooms)
+        start_x = room.x + room.width // 2
+        start_y = room.y + room.height // 2
+        return (start_x, start_y)
+
+def generate_tiles(rooms):
+    tiles = []
+
     for room in rooms:
-        connection_amount = random.randint(MIN_CONNECTIONS_PER_ROOM,
-            MAX_CONNECTIONS_PER_ROOM)
-        other_rooms = [i for i in rooms if i != room]
-        for i in range(connection_amount):
-            other_room = random.choice(other_rooms)
-            passage = Passage(room, other_room)
-            passages.append(passage)
-    return passages
+        # First fill the rooms with floor tiles
+        for col_idx in range(room.width + 1):
+            for row_idx in range(room.height + 1):
+                tiles.append(FloorTile(col_idx + room.x, row_idx + room.y))
+        
+        # Don't bother building passages if there's only one room
+        if len(rooms) == 1:
+            continue
 
-def generate_blocks(rooms, passages):
-    blocks = []
+        # Choose an amount of passages from this room
+        connection_amount = int(random.uniform(MIN_CONNECTIONS_PER_ROOM,
+            MAX_CONNECTIONS_PER_ROOM))
+        
+        # Find distance to all rooms for later
+        room_distances = []
+        for other_room in rooms:
+            data = {
+                'dist' : calc_required_passage_length(room, other_room),
+                'room' : other_room
+            }
+            room_distances.append(data)
 
-    # First create the outline of the rooms
-    for room in rooms:
-        for col_idx in range(room.width):
-            # Top wall
-            if random.uniform(0, 1) > WALL_GAP_CHANCE:
-                blocks.append(WallBlock(col_idx + room.x, room.y))
-            # Bottom wall
-            if random.uniform(0, 1) > WALL_GAP_CHANCE:
-                blocks.append(WallBlock(col_idx + room.x, room.bottom_y))
-        for row_idx in range(room.height):
-            # Left wall
-            if random.uniform(0, 1) > WALL_GAP_CHANCE:
-                blocks.append(WallBlock(room.x, row_idx + room.y))
-            # Right wall
-            if random.uniform(0, 1) > WALL_GAP_CHANCE:
-                blocks.append(WallBlock(room.right_x, row_idx + room.y))
-        # Bottom right corner requires special doing
-        blocks.append(WallBlock(room.right_x, room.bottom_y))
-    
-    for passage in passages:
-        # first find distance in 4 directions from start to end
-        top_dist = passage.start.y - passage.end.bottom_y
-        bottom_dist = passage.end.y - passage.start.bottom_y
-        left_dist = passage.start.x - passage.end.right_x
-        right_dist = passage.end.x - passage.start.right_x
+        # Then sort the rooms and choose some
 
-        # draw a line of blocks from top middle of start to right middle of end
-        crnt_y = passage.start.y
-        crnt_x = (passage.start.x + passage.start.right_x) // 2
-        end_y = (passage.end.y + passage.end.bottom_y) // 2
-        end_x = passage.end.x
+        # I can't find how to sort a list of dicts by one of their keys
+        # so just find what the index was originally to calc dist
+        closest_room_distances = room_distances.copy()
+        closest_room_distances = sort_based_on_key(closest_room_distances, 'dist')
+
+        # Definitely connect to the very closest
+        tiles += generate_passage(room, room_distances[0]['room'])
+
+        closest_room_distances = closest_room_distances[1:connection_amount * 2]
+        rooms_to_connect_with = random.sample(closest_room_distances,
+            connection_amount - 1)
+        
+        for other_room in rooms_to_connect_with:
+            tiles += generate_passage(room, other_room['room'])
+
+    return tiles
+
+def calc_required_passage_length(start_room, end_room):
+    return abs(start_room.x - end_room.x) + abs(start_room.y - end_room.y)
+
+def generate_passage(start_room, end_room):
+    # This is a very long and probably bad function
+    # that will generate a neat-looking passage from start to end
+
+    tiles = []
+
+    x_dist = abs(end_room.center_x - start_room.center_x)
+    y_dist = abs(end_room.center_y - start_room.center_y)
+
+    # If this passage will be more vertical
+    if x_dist < y_dist:
+        start_x = start_room.center_x
+        # If going up
+        if end_room.center_y < start_room.center_y:
+            start_y = start_room.y
+        # If going down
+        else:
+            start_y = start_room.bottom_y
+        
+        # If no turns need to be made
+        if end_room.x < start_x < end_room.right_x:
+            end_x = start_x
+            end_y = end_room.bottom_y
+        # If we need to go left
+        elif end_room.right_x < start_x:
+            end_x = end_room.right_x
+            end_y = end_room.center_y
+        # If we need to go right
+        else:
+            end_x = end_room.x
+            end_y = end_room.center_y
+        
+        # Go up/down until you reach target y
+        crnt_x = start_x
+        crnt_y = start_y + 1
         while crnt_y != end_y:
+            tiles.append(FloorTile(crnt_x, crnt_y))
             if crnt_y < end_y:
                 crnt_y += 1
             else:
                 crnt_y -= 1
-            #blocks.append(DeathBlock(crnt_x, crnt_y))
         while crnt_x != end_x:
+            tiles.append(FloorTile(crnt_x, crnt_y))
             if crnt_x < end_x:
                 crnt_x += 1
             else:
                 crnt_x -= 1
-            #blocks.append(DeathBlock(crnt_x, crnt_y))
 
-    return blocks
+    # If this passage will be more horizontal
+    else:
+        start_y = start_room.center_y
+        # If going left
+        if end_room.center_x < start_room.center_x:
+            start_x = start_room.x
+        # If going right
+        else:
+            start_x = start_room.right_x
+        
+        # If no turns need to be made
+        if end_room.y < start_y < end_room.bottom_y:
+            end_x = end_room.right_x
+            end_y = start_y
+        # If we need to go up
+        elif end_room.bottom_y < start_y:
+            end_x = end_room.center_x
+            end_y = end_room.bottom_y
+        # If we need to go down
+        else:
+            end_x = end_room.center_x
+            end_y = end_room.y
+        
+        # Go right/left until you reach target x
+        crnt_x = start_x
+        crnt_y = start_y
+        while crnt_x != end_x:
+            tiles.append(FloorTile(crnt_x, crnt_y))
+            if crnt_x < end_x:
+                crnt_x += 1
+            else:
+                crnt_x -= 1
+        
+        # Then finish by going to target y
+        while crnt_y != end_y:
+            tiles.append(FloorTile(crnt_x, crnt_y))
+            if crnt_y < end_y:
+                crnt_y += 1
+            else:
+                crnt_y -= 1
 
-def generate_death_blocks():
-    blocks = []
-    death_block_amount = int(MAX_X * MAX_Y * DEATH_BLOCK_DENSITY)
-    for i in range(death_block_amount):
-        x = random.randint(0, MAX_X)
-        y = random.randint(0, MAX_Y)
-        blocks.append(DeathBlock(x, y))
-    return blocks
+    return tiles
+
+def generate_death_tiles(rooms):
+    tiles = []
+    for room in rooms:
+        death_tile_amount = int(room.area * DEATH_TILE_DENSITY)
+        for i in range(death_tile_amount):
+            x = random.randint(0, room.width) + room.x
+            y = random.randint(0, room.height) + room.y
+            tiles.append(DeathTile(x, y))
+    return tiles
+
+def generate_enemies(rooms):
+    tiles = []
+    for room in rooms:
+        enemy_amount = random.randint(MIN_ENEMIES_PER_ROOM, MAX_ENEMIES_PER_ROOM)
+        for i in range(enemy_amount):
+            x = random.randint(0, room.width) + room.x
+            y = random.randint(0, room.height) + room.y
+            tiles.append(MovingEnemy(x, y))
+    return tiles
