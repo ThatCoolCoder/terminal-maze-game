@@ -14,7 +14,7 @@ MAX_X = 250
 MAX_Y = 100
 
 MIN_CONNECTIONS_PER_ROOM = 1
-MAX_CONNECTIONS_PER_ROOM = 2
+MAX_CONNECTIONS_PER_ROOM = 1
 
 MAX_PASSAGE_LENGTH = 80
 
@@ -22,7 +22,7 @@ DEATH_TILE_DENSITY = 1 / 30
 MIN_ENEMIES_PER_ROOM = 1
 MAX_ENEMIES_PER_ROOM = 3
 
-PASSAGE_WIDTH = 5
+FINISH_TILE_AMOUNT = 10
 
 @dataclass
 class Room:
@@ -64,6 +64,7 @@ def generate_maze():
     tiles = generate_tiles(rooms)
     tiles += generate_death_tiles(rooms)
     tiles += generate_enemies(rooms)
+    tiles += generate_finish_tiles(rooms)
     return start_x, start_y, tiles
 
 def generate_rooms():
@@ -257,4 +258,13 @@ def generate_enemies(rooms):
             x = random.randint(0, room.width) + room.x
             y = random.randint(0, room.height) + room.y
             tiles.append(MovingEnemy(x, y))
+    return tiles
+
+def generate_finish_tiles(rooms):
+    tiles = []
+    rooms_with_finish_point = random.sample(rooms, FINISH_TILE_AMOUNT)
+    for room in rooms_with_finish_point:
+        x_pos = random.randint(room.x, room.right_x)
+        y_pos = random.randint(room.y, room.bottom_y)
+        tiles.append(FinishTile(x_pos, y_pos))
     return tiles

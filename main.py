@@ -1,4 +1,6 @@
 import random
+from time import sleep
+from enum import Enum, unique
 
 import curses
 
@@ -21,7 +23,15 @@ PAN_INCREMENT = 1
 pan_x = 0
 pan_y = 0
 
+@unique
+class Outcome(Enum):
+    WIN = 0
+    LOSE = 1
+
+outcome = Outcome.LOSE
+
 def main(stdscr):
+    global outcome
     while True:
         stdscr.erase()
         for tile in maze_tiles:
@@ -30,6 +40,12 @@ def main(stdscr):
             
         pan_to_player()
         if not player.alive:
+            outcome = Outcome.LOSE
+            sleep(1)
+            break
+        elif player.finished:
+            outcome = Outcome.WIN
+            sleep(1)
             break
 
         stdscr.refresh()
@@ -50,6 +66,7 @@ curses.start_color()
 curses.init_pair(Tile.COLOR_PAIR_NUMBER, curses.COLOR_WHITE, curses.COLOR_BLACK)
 curses.init_pair(DeathTile.COLOR_PAIR_NUMBER, curses.COLOR_RED, curses.COLOR_WHITE)
 curses.init_pair(Player.COLOR_PAIR_NUMBER, curses.COLOR_BLUE, curses.COLOR_WHITE)
+curses.init_pair(FinishTile.COLOR_PAIR_NUMBER, curses.COLOR_GREEN, curses.COLOR_WHITE)
 
 stdscr.keypad(True)
 curses.noecho()
@@ -66,3 +83,8 @@ maze_tiles.append(player)
 win = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
 
 curses.wrapper(main)
+
+if outcome == Outcome.LOSE:
+    print('lol you lost')
+elif outcome == Outcome.WIN:
+    print('yay you won')

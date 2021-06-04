@@ -34,6 +34,11 @@ class DeathTile(Tile):
     def __init__(self, x:int, y:int):
         super().__init__(x, y, 'X')
 
+class FinishTile(Tile):
+    COLOR_PAIR_NUMBER = 4
+    def __init__(self, x:int, y:int):
+        super().__init__(x, y, '\u2691')
+
 class Player(Tile):
     COLOR_PAIR_NUMBER = 3
 
@@ -42,6 +47,7 @@ class Player(Tile):
         self.controllable = controllable
         self.alive = True
         self.health = 1
+        self.finished = False
 
         # These are in __init__ so they can reference stuff defined later
         self.KILLED_BY = [DeathTile, MovingEnemy]
@@ -69,6 +75,17 @@ class Player(Tile):
                 touching_death_tile = True
                 break
         return touching_death_tile
+
+    def check_if_finished(self, tiles):
+        finished = False
+        for tile in tiles:
+            if tile.x == self.x and \
+                tile.y == self.y and \
+                type(tile) == FinishTile:
+
+                finished = True
+                break
+        return finished
     
     def keybinds(self, scr, tiles):
         key = scr.getkey()
@@ -104,6 +121,7 @@ class Player(Tile):
                 if self.check_if_dead(new_x, new_y, tiles) or \
                     self.check_if_dead(self.x, self.y, tiles):
                     self.alive = False
+        self.finished = self.check_if_finished(tiles)
 
 class MovingEnemy(Player):
     COLOR_PAIR_NUMBER = 2
