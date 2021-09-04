@@ -185,13 +185,13 @@ def generate_passage(start_room, end_room):
         crnt_x = start_x
         crnt_y = start_y + 1
         while crnt_y != end_y:
-            tiles.append(FloorTile(crnt_x, crnt_y))
+            tiles.append(PassageFloorTile(crnt_x, crnt_y))
             if crnt_y < end_y:
                 crnt_y += 1
             else:
                 crnt_y -= 1
         while crnt_x != end_x:
-            tiles.append(FloorTile(crnt_x, crnt_y))
+            tiles.append(PassageFloorTile(crnt_x, crnt_y))
             if crnt_x < end_x:
                 crnt_x += 1
             else:
@@ -224,7 +224,7 @@ def generate_passage(start_room, end_room):
         crnt_x = start_x
         crnt_y = start_y
         while crnt_x != end_x:
-            tiles.append(FloorTile(crnt_x, crnt_y))
+            tiles.append(PassageFloorTile(crnt_x, crnt_y))
             if crnt_x < end_x:
                 crnt_x += 1
             else:
@@ -232,7 +232,7 @@ def generate_passage(start_room, end_room):
         
         # Then finish by going to target y
         while crnt_y != end_y:
-            tiles.append(FloorTile(crnt_x, crnt_y))
+            tiles.append(PassageFloorTile(crnt_x, crnt_y))
             if crnt_y < end_y:
                 crnt_y += 1
             else:
