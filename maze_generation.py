@@ -13,8 +13,8 @@ WALL_GAP_CHANCE = 1 / 10
 MAX_X = 250
 MAX_Y = 100
 
-MIN_CONNECTIONS_PER_ROOM = 1
-MAX_CONNECTIONS_PER_ROOM = 1
+MIN_CONNECTIONS_PER_ROOM = 3
+MAX_CONNECTIONS_PER_ROOM = 4
 
 MAX_PASSAGE_LENGTH = 80
 
@@ -51,17 +51,11 @@ class Room:
     def area(self):
         return self.width * self.height
 
-@dataclass
-class Passage:
-    start_x: int
-    start_y: int
-    end_x: int
-    end_y: int
-
 def generate_maze():
     rooms = generate_rooms()
     start_x, start_y = generate_start_point(rooms)
     tiles = generate_tiles(rooms)
+    tiles += generate_passages(rooms)
     tiles += generate_death_tiles(rooms)
     tiles += generate_enemies(rooms)
     tiles += generate_finish_tiles(rooms)
@@ -109,136 +103,72 @@ def generate_tiles(rooms):
         for col_idx in range(room.width + 1):
             for row_idx in range(room.height + 1):
                 tiles.append(FloorTile(col_idx + room.x, row_idx + room.y))
-        
-        # Don't bother building passages if there's only one room
-        if len(rooms) == 1:
-            continue
-
-        # Choose an amount of passages from this room
-        connection_amount = int(random.uniform(MIN_CONNECTIONS_PER_ROOM,
-            MAX_CONNECTIONS_PER_ROOM))
-        
-        # Find distance to all rooms for later
-        room_distances = []
-        for other_room in rooms:
-            data = {
-                'dist' : calc_required_passage_length(room, other_room),
-                'room' : other_room
-            }
-            room_distances.append(data)
-
-        # Then sort the rooms and choose some
-
-        # I can't find how to sort a list of dicts by one of their keys
-        # so just find what the index was originally to calc dist
-        closest_room_distances = room_distances.copy()
-        closest_room_distances = sort_based_on_key(closest_room_distances, 'dist')
-
-        # Definitely connect to the very closest
-        tiles += generate_passage(room, room_distances[0]['room'])
-
-        closest_room_distances = closest_room_distances[1:connection_amount * 2]
-        rooms_to_connect_with = random.sample(closest_room_distances,
-            connection_amount - 1)
-        
-        for other_room in rooms_to_connect_with:
-            tiles += generate_passage(room, other_room['room'])
 
     return tiles
 
-def calc_required_passage_length(start_room, end_room):
-    return abs(start_room.x - end_room.x) + abs(start_room.y - end_room.y)
-
-def generate_passage(start_room, end_room):
-    # This is a very long and probably bad function
-    # that will generate a neat-looking passage from start to end
+def generate_passages(rooms):
+        # Don't bother building passages if there's only one room
+    if len(rooms) <= 1:
+        return []
 
     tiles = []
-
-    x_dist = abs(end_room.center_x - start_room.center_x)
-    y_dist = abs(end_room.center_y - start_room.center_y)
-
-    # If this passage will be more vertical
-    if x_dist < y_dist:
-        start_x = start_room.center_x
-        # If going up
-        if end_room.center_y < start_room.center_y:
-            start_y = start_room.y
-        # If going down
-        else:
-            start_y = start_room.bottom_y
-        
-        # If no turns need to be made
-        if end_room.x < start_x < end_room.right_x:
-            end_x = start_x
-            end_y = end_room.bottom_y
-        # If we need to go left
-        elif end_room.right_x < start_x:
-            end_x = end_room.right_x
-            end_y = end_room.center_y
-        # If we need to go right
-        else:
-            end_x = end_room.x
-            end_y = end_room.center_y
-        
-        # Go up/down until you reach target y
-        crnt_x = start_x
-        crnt_y = start_y + 1
-        while crnt_y != end_y:
-            tiles.append(PassageFloorTile(crnt_x, crnt_y))
-            if crnt_y < end_y:
-                crnt_y += 1
-            else:
-                crnt_y -= 1
-        while crnt_x != end_x:
-            tiles.append(PassageFloorTile(crnt_x, crnt_y))
-            if crnt_x < end_x:
-                crnt_x += 1
-            else:
-                crnt_x -= 1
-
-    # If this passage will be more horizontal
-    else:
-        start_y = start_room.center_y
-        # If going left
-        if end_room.center_x < start_room.center_x:
-            start_x = start_room.x
-        # If going right
-        else:
-            start_x = start_room.right_x
-        
-        # If no turns need to be made
-        if end_room.y < start_y < end_room.bottom_y:
-            end_x = end_room.right_x
-            end_y = start_y
-        # If we need to go up
-        elif end_room.bottom_y < start_y:
-            end_x = end_room.center_x
-            end_y = end_room.bottom_y
-        # If we need to go down
-        else:
-            end_x = end_room.center_x
-            end_y = end_room.y
-        
-        # Go right/left until you reach target x
-        crnt_x = start_x
-        crnt_y = start_y
-        while crnt_x != end_x:
-            tiles.append(PassageFloorTile(crnt_x, crnt_y))
-            if crnt_x < end_x:
-                crnt_x += 1
-            else:
-                crnt_x -= 1
-        
-        # Then finish by going to target y
-        while crnt_y != end_y:
-            tiles.append(PassageFloorTile(crnt_x, crnt_y))
-            if crnt_y < end_y:
-                crnt_y += 1
-            else:
-                crnt_y -= 1
-
+    for room in rooms:
+        available_directions = [Direction.LEFT, Direction.RIGHT, Direction.UP, Direction.DOWN]
+        for _ in range(random.randint(MIN_CONNECTIONS_PER_ROOM, MAX_CONNECTIONS_PER_ROOM)):
+            passage_direction = random.choice(available_directions)
+            tiles += generate_passage(room, passage_direction, rooms)
+            available_directions.remove(passage_direction)
     return tiles
+
+def generate_passage(start_room: Room, direction: Direction, rooms):
+    # Calc start point of the passage
+    if direction == Direction.LEFT:
+        crnt_position_x = start_room.x
+        crnt_position_y = start_room.center_y
+    elif direction == Direction.UP:
+        crnt_position_x = start_room.center_x
+        crnt_position_y = start_room.y
+    elif direction == Direction.RIGHT:
+        crnt_position_x = start_room.right_x
+        crnt_position_y = start_room.center_y
+    else:
+        crnt_position_x = start_room.center_x
+        crnt_position_y = start_room.bottom_y
+    
+    tiles = []
+    success = False
+    passage_length = 0
+
+    while True:
+        if direction == Direction.LEFT:
+            crnt_position_x -= 1
+        elif direction == Direction.UP:
+            crnt_position_y -= 1
+        elif direction == Direction.RIGHT:
+            crnt_position_x += 1
+        else:
+            crnt_position_y -= 1
+        
+        has_hit_room = False
+        for room in rooms:
+            if room.x <= crnt_position_x and crnt_position_x <= room.right_x and \
+                room.y <= crnt_position_y and crnt_position_y <= room.bottom_y:
+                has_hit_room = True
+        
+        if has_hit_room:
+            success = True
+            break
+
+        tiles.append(PassageFloorTile(crnt_position_x, crnt_position_y))
+        passage_length += 1
+        if passage_length > MAX_PASSAGE_LENGTH:
+            break
+    
+    # Only add the passage if it hit another room
+    if success:
+        return tiles
+    else:
+        return []
 
 def generate_death_tiles(rooms):
     tiles = []
