@@ -1,6 +1,9 @@
 import random
+from abc import ABC, abstractmethod
 
 import curses
+
+from misc import Direction
 
 class Tile:
     COLOR_PAIR_NUMBER = 1
@@ -30,10 +33,14 @@ class FloorTile(Tile):
         super().__init__(x, y, '\u2588')
 
 class PassageFloorTile(Tile):
-    # A floor tile used for in and around passages
-    def __init__(self, x: int, y: int):
-        # \u2588 is a filled-in-rectangle character
-        super().__init__(x, y, '\u2588')
+    # A floor tile used for in and around entrances of passages
+    def __init__(self, x: int, y: int, direction: Direction):
+        # \u2587 and \u2589 are a nearly-filled-in-rectangle characters
+        if direction == direction.UP or direction == direction.DOWN:
+            char = '\u2587'
+        else:
+            char = '\u2589'
+        super().__init__(x, y, char)
 
 class DeathTile(Tile):
     COLOR_PAIR_NUMBER = 2
@@ -45,20 +52,14 @@ class FinishTile(Tile):
     def __init__(self, x: int, y: int):
         super().__init__(x, y, '\u2691')
 
-class Player(Tile):
-    COLOR_PAIR_NUMBER = 3
+class TileWalker(ABC, Tile):
+    # Abstract class for anything that can walk on the tiles
+    KILLED_BY = []
+    COLLIDES_WITH = []
+    WALKABLE_TILES = []
 
-    def __init__(self, x: int, y: int, controllable=True, char='@'):
+    def __init__(self, x: int, y: int, char='W'):
         super().__init__(x, y, char)
-        self.controllable = controllable
-        self.alive = True
-        self.health = 1
-        self.finished = False
-
-        # These are in __init__ so they can reference stuff defined later
-        self.KILLED_BY = [DeathTile, MovingEnemy]
-        self.COLLIDES_WITH = [DeathTile, MovingEnemy]
-        self.WALKABLE_TILES = [FloorTile, PassageFloorTile]
     
     def can_walk_to(self, new_x, new_y, tiles):
         is_floor = False
@@ -82,6 +83,24 @@ class Player(Tile):
                 touching_death_tile = True
                 break
         return touching_death_tile
+
+    @abstractmethod
+    def update(self, src, tiles, *args):
+        pass
+
+class Player(TileWalker):
+    COLOR_PAIR_NUMBER = 3
+
+    def __init__(self, x: int, y: int, char='@'):
+        super().__init__(x, y, char)
+        self.alive = True
+        self.health = 1
+        self.finished = False
+
+        # These are in __init__ so they can reference stuff defined later
+        self.KILLED_BY = [DeathTile, MovingEnemy]
+        self.COLLIDES_WITH = [DeathTile, MovingEnemy]
+        self.WALKABLE_TILES = [FloorTile, PassageFloorTile]
 
     def check_if_finished(self, tiles):
         finished = False
@@ -115,22 +134,21 @@ class Player(Tile):
         return (new_x, new_y, moved)
 
     def update(self, scr, tiles, *args):
-        if self.controllable:
-            new_x, new_y, moved = self.keybinds(scr, tiles)
-            if moved:
-                if self.can_walk_to(new_x, new_y, tiles):
-                    self.x = new_x
-                    self.y = new_y
-                else:
-                    curses.beep()
-                # Check both the current position and the new one
-                # In case death things have moved while player stood still
-                if self.check_if_dead(new_x, new_y, tiles) or \
-                    self.check_if_dead(self.x, self.y, tiles):
-                    self.alive = False
+        new_x, new_y, moved = self.keybinds(scr, tiles)
+        if moved:
+            if self.can_walk_to(new_x, new_y, tiles):
+                self.x = new_x
+                self.y = new_y
+            else:
+                curses.beep()
+            # Check both the current position and the new one
+            # In case death things have moved while player stood still
+            if self.check_if_dead(new_x, new_y, tiles) or \
+                self.check_if_dead(self.x, self.y, tiles):
+                self.alive = False
         self.finished = self.check_if_finished(tiles)
 
-class MovingEnemy(Player):
+class MovingEnemy(TileWalker):
     COLOR_PAIR_NUMBER = 2
     MOVEMENT_CHANCE = 0.5
     PLAYER_DETECTION_DIST = 30
@@ -139,7 +157,7 @@ class MovingEnemy(Player):
         super().__init__(x, y, char='!')
 
         # This has to be in __init__ so we can include MovingEnemy
-        self.COLLIDES_WITH = [MovingEnemy, DeathTile]
+        self.COLLIDES_WITH = [MovingEnemy, DeathTile, PassageFloorTile]
         self.WALKABLE_TILES = [FloorTile]
     
     def can_see_player(self, player):

@@ -17,12 +17,15 @@ MIN_CONNECTIONS_PER_ROOM = 3
 MAX_CONNECTIONS_PER_ROOM = 4
 
 MAX_PASSAGE_LENGTH = 80
+# passage is extended this many tiles past the edge of the room into the room
+# (prevents enemies from walking into passages)
+PASSAGE_INDENT = 1
 
 DEATH_TILE_DENSITY = 1 / 30
 MIN_ENEMIES_PER_ROOM = 1
 MAX_ENEMIES_PER_ROOM = 3
 
-FINISH_TILE_AMOUNT = 10
+FINISH_TILE_DENSITY = 1 / 10
 
 @dataclass
 class Room:
@@ -53,6 +56,7 @@ class Room:
 
 def generate_maze():
     rooms = generate_rooms()
+    # rooms = [Room(0, 0, 10, 10)]
     start_x, start_y = generate_start_point(rooms)
     tiles = generate_tiles(rooms)
     tiles += generate_passages(rooms)
@@ -98,8 +102,8 @@ def generate_start_point(rooms):
 def generate_tiles(rooms):
     tiles = []
 
+    # Fill the rooms with floor tiles
     for room in rooms:
-        # First fill the rooms with floor tiles
         for col_idx in range(room.width + 1):
             for row_idx in range(room.height + 1):
                 tiles.append(FloorTile(col_idx + room.x, row_idx + room.y))
@@ -107,7 +111,7 @@ def generate_tiles(rooms):
     return tiles
 
 def generate_passages(rooms):
-        # Don't bother building passages if there's only one room
+    # Don't bother building passages if there's only one room (or none)
     if len(rooms) <= 1:
         return []
 
@@ -123,23 +127,29 @@ def generate_passages(rooms):
 def generate_passage(start_room: Room, direction: Direction, rooms):
     # Calc start point of the passage
     if direction == Direction.LEFT:
-        crnt_position_x = start_room.x
+        crnt_position_x = start_room.x + (PASSAGE_INDENT - 1)
         crnt_position_y = start_room.center_y
     elif direction == Direction.UP:
         crnt_position_x = start_room.center_x
-        crnt_position_y = start_room.y
+        crnt_position_y = start_room.y + (PASSAGE_INDENT - 1)
     elif direction == Direction.RIGHT:
-        crnt_position_x = start_room.right_x
+        crnt_position_x = start_room.right_x - (PASSAGE_INDENT - 1)
         crnt_position_y = start_room.center_y
     else:
         crnt_position_x = start_room.center_x
-        crnt_position_y = start_room.bottom_y
+        crnt_position_y = start_room.bottom_y - (PASSAGE_INDENT - 1)
     
     tiles = []
     success = False
     passage_length = 0
+    consecutive_room_hits = 0 # counts how many consecutive steps we've been in a room
 
     while True:
+        tiles.append(PassageFloorTile(crnt_position_x, crnt_position_y, direction))
+        passage_length += 1
+        if passage_length > MAX_PASSAGE_LENGTH:
+            break
+
         if direction == Direction.LEFT:
             crnt_position_x -= 1
         elif direction == Direction.UP:
@@ -147,21 +157,23 @@ def generate_passage(start_room: Room, direction: Direction, rooms):
         elif direction == Direction.RIGHT:
             crnt_position_x += 1
         else:
-            crnt_position_y -= 1
+            crnt_position_y += 1
         
-        has_hit_room = False
+        in_room = False
         for room in rooms:
+            if room == start_room:
+                continue
             if room.x <= crnt_position_x and crnt_position_x <= room.right_x and \
                 room.y <= crnt_position_y and crnt_position_y <= room.bottom_y:
-                has_hit_room = True
+                in_room = True
         
-        if has_hit_room:
-            success = True
-            break
+        if in_room:
+            consecutive_room_hits += 1
+        else:
+            consecutive_room_hits = 0
 
-        tiles.append(PassageFloorTile(crnt_position_x, crnt_position_y))
-        passage_length += 1
-        if passage_length > MAX_PASSAGE_LENGTH:
+        if consecutive_room_hits > PASSAGE_INDENT:
+            success = True
             break
     
     # Only add the passage if it hit another room
@@ -192,7 +204,7 @@ def generate_enemies(rooms):
 
 def generate_finish_tiles(rooms):
     tiles = []
-    rooms_with_finish_point = random.sample(rooms, FINISH_TILE_AMOUNT)
+    rooms_with_finish_point = random.sample(rooms, int(len(rooms) * FINISH_TILE_DENSITY))
     for room in rooms_with_finish_point:
         x_pos = random.randint(room.x, room.right_x)
         y_pos = random.randint(room.y, room.bottom_y)
