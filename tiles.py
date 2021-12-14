@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 import curses
 
-from misc import Direction
+from misc import *
 
 class Tile:
     COLOR_PAIR_NUMBER = 1
@@ -160,8 +160,8 @@ class ChasingEnemy(TileWalker):
         self.WALKABLE_TILES = [FloorTile]
     
     def can_see_player(self, player):
-        dist_sq = (self.x - player.x) ** 2 + (self.y - player.y) ** 2
-        return dist_sq < self.PLAYER_DETECTION_DIST ** 2
+        return distance_squared(self.x, self.y, player.x, player.y) < \
+            self.PLAYER_DETECTION_DIST ** 2
     
     def update(self, scr, tiles, player):
         if random.uniform(0, 1) < self.MOVEMENT_CHANCE:
@@ -190,7 +190,7 @@ class MovingEnemy(TileWalker):
     DIRECTION_TO_CHAR = {
         Direction.LEFT : '<',
         Direction.RIGHT : '>',
-        Direction.UP : '\u028c',
+        Direction.UP : '^',
         Direction.DOWN : 'v'
     }
 

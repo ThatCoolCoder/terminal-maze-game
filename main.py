@@ -17,6 +17,8 @@ PAN_TRIGGER_DIST = 10
 # (may take multiple frames to move fully)
 PAN_INCREMENT = 1
 
+VIEW_DISTANCE = 20
+
 @unique
 class Outcome(Enum):
     WIN = 0
@@ -44,8 +46,12 @@ def main(stdscr):
     while True:
         stdscr.erase()
         for tile in maze_tiles:
-            tile.draw(stdscr, pan_x, pan_y)
-            tile.update(stdscr, maze_tiles, player)
+            # We divide by 2 because characters are only half as wide as they are tall,
+            # so this makes a perfect circle
+            if distance_squared(tile.x / 2, tile.y, player.x / 2, player.y) < \
+                VIEW_DISTANCE ** 2:
+                tile.draw(stdscr, pan_x, pan_y)
+                tile.update(stdscr, maze_tiles, player)
             
         pan_to_player()
         if not player.alive:
