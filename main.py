@@ -1,5 +1,6 @@
 import random
 from time import sleep
+import math
 from enum import Enum, unique
 
 import curses
@@ -24,8 +25,6 @@ class Outcome(Enum):
     WIN = 0
     LOSE = 1
 
-outcome = None
-
 def setup_curses():
     curses.start_color()
     curses.init_pair(Tile.COLOR_PAIR_NUMBER, curses.COLOR_WHITE, curses.COLOR_BLACK)
@@ -39,10 +38,10 @@ def setup_curses():
     curses.cbreak()
 
 def main(stdscr):
-    global outcome
-
     setup_curses()
 
+    outcome = Outcome.LOSE
+    move_count = 0
     while True:
         stdscr.erase()
         for tile in maze_tiles:
@@ -56,14 +55,15 @@ def main(stdscr):
         pan_to_player()
         if not player.alive:
             outcome = Outcome.LOSE
-            sleep(1)
             break
         elif player.finished:
             outcome = Outcome.WIN
-            sleep(1)
             break
 
         stdscr.refresh()
+        move_count += 1
+
+    return outcome, move_count
 
 def pan_to_player():
     global pan_x, pan_y
@@ -78,9 +78,11 @@ def pan_to_player():
     elif true_y >= SCREEN_HEIGHT - PAN_TRIGGER_DIST:
         pan_y += PAN_INCREMENT
 
-def show_outcome(outcome: Outcome):
+def show_outcome(outcome: Outcome, move_count: int):
     if outcome == Outcome.WIN:
         print('Yay you won')
+        score = int(max(250 - move_count, 0) * 3.4253)
+        print(f'You scored {score}')
     else:
         print('Lol you lost')
 
@@ -98,6 +100,6 @@ pan_y = player.y - SCREEN_HEIGHT // 2
 
 win = curses.newwin(SCREEN_HEIGHT, SCREEN_WIDTH, 0, 0)
 
-curses.wrapper(main)
+outcome, move_count = curses.wrapper(main)
 
-show_outcome(outcome)
+show_outcome(outcome, move_count)
