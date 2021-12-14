@@ -133,7 +133,10 @@ class Player(TileWalker):
 
         return (new_x, new_y, moved)
 
-    def update(self, scr, tiles, *args):
+    def update(*args):
+        pass
+
+    def player_update(self, scr, tiles):
         new_x, new_y, moved = self.keybinds(scr, tiles)
         if moved:
             if self.can_walk_to(new_x, new_y, tiles):

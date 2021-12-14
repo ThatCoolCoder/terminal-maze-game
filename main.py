@@ -2,6 +2,7 @@ import random
 from time import sleep
 import math
 from enum import Enum, unique
+import textwrap
 
 import curses
 
@@ -38,12 +39,15 @@ def setup_curses():
     curses.cbreak()
 
 def main(stdscr):
+    global SCREEN_WIDTH, SCREEN_HEIGHT
     setup_curses()
 
     outcome = Outcome.LOSE
     move_count = 0
     while True:
         stdscr.erase()
+        SCREEN_HEIGHT, SCREEN_WIDTH = stdscr.getmaxyx()
+
         for tile in maze_tiles:
             # We divide by 2 because characters are only half as wide as they are tall,
             # so this makes a perfect circle
@@ -51,7 +55,12 @@ def main(stdscr):
                 VIEW_DISTANCE ** 2:
                 tile.draw(stdscr, pan_x, pan_y)
                 tile.update(stdscr, maze_tiles, player)
-            
+
+        draw_hud(move_count)
+        # Update player separately after drawing hud,
+        # as it blocks for input and we don't want that in the middle of the drawing loop
+        player.player_update(stdscr, maze_tiles)
+
         pan_to_player()
         if not player.alive:
             outcome = Outcome.LOSE
@@ -64,6 +73,15 @@ def main(stdscr):
         move_count += 1
 
     return outcome, move_count
+
+def draw_hud(move_count: int):
+    message = 'Arrow keys to move. Q to quit. ' + \
+        'Your goal: get to the green flag without dying. ' + \
+        f'Move count: {move_count}'
+    lines = textwrap.wrap(message, SCREEN_WIDTH)
+    for idx, line in enumerate(lines):
+        stdscr.move(SCREEN_HEIGHT - (len(lines) - idx), 0)
+        stdscr.addstr(line, curses.color_pair(0))
 
 def pan_to_player():
     global pan_x, pan_y
