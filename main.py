@@ -81,7 +81,7 @@ def pan_to_player():
 def show_outcome(outcome: Outcome, move_count: int):
     if outcome == Outcome.WIN:
         print('Yay you won')
-        score = int(max(250 - move_count, 0) * 3.4253)
+        score = int(max(500 - move_count, 0) * 3.4253)
         print(f'You scored {score}')
     else:
         print('Lol you lost')
