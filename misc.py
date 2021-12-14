@@ -7,6 +7,17 @@ class Direction(Enum):
     LEFT = 2
     RIGHT = 3
 
+    @staticmethod
+    def opposite(direction):
+        if direction == Direction.UP:
+            return Direction.DOWN
+        elif direction == Direction.DOWN:
+            return Direction.UP
+        elif direction == Direction.LEFT:
+            return Direction.RIGHT
+        else:
+            return Direction.LEFT
+
 def sort_based_on_key(items, key):
     # Sort a list of dicts by the value at dict[key]
     # Order of identical items is not garanteed

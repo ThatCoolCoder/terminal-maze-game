@@ -98,8 +98,8 @@ class Player(TileWalker):
         self.finished = False
 
         # These are in __init__ so they can reference stuff defined later
-        self.KILLED_BY = [DeathTile, MovingEnemy]
-        self.COLLIDES_WITH = [DeathTile, MovingEnemy]
+        self.KILLED_BY = [DeathTile, MovingEnemy, ChasingEnemy]
+        self.COLLIDES_WITH = [DeathTile, MovingEnemy, ChasingEnemy]
         self.WALKABLE_TILES = [FloorTile, PassageFloorTile]
 
     def check_if_finished(self, tiles):
@@ -148,7 +148,7 @@ class Player(TileWalker):
                 self.alive = False
         self.finished = self.check_if_finished(tiles)
 
-class MovingEnemy(TileWalker):
+class ChasingEnemy(TileWalker):
     COLOR_PAIR_NUMBER = 2
     MOVEMENT_CHANCE = 0.5
     PLAYER_DETECTION_DIST = 30
@@ -156,8 +156,7 @@ class MovingEnemy(TileWalker):
     def __init__(self, x: int, y: int):
         super().__init__(x, y, char='!')
 
-        # This has to be in __init__ so we can include MovingEnemy
-        self.COLLIDES_WITH = [MovingEnemy, DeathTile, PassageFloorTile]
+        self.COLLIDES_WITH = [MovingEnemy, ChasingEnemy, DeathTile, PassageFloorTile]
         self.WALKABLE_TILES = [FloorTile]
     
     def can_see_player(self, player):
@@ -185,3 +184,44 @@ class MovingEnemy(TileWalker):
                     self.x = new_x
                 elif self.can_walk_to(self.x, new_y, tiles):
                     self.y = new_y
+
+class MovingEnemy(TileWalker):
+    COLOR_PAIR_NUMBER = 2
+    DIRECTION_TO_CHAR = {
+        Direction.LEFT : '<',
+        Direction.RIGHT : '>',
+        Direction.UP : '\u028c',
+        Direction.DOWN : 'v'
+    }
+
+    def __init__(self, x: int, y: int, direction: Direction = None):
+        # \u25c6 is a square tilted 45°
+        super().__init__(x, y, char='\u25c6')
+
+        self.COLLIDES_WITH = [MovingEnemy, ChasingEnemy, DeathTile, PassageFloorTile]
+        self.WALKABLE_TILES = [FloorTile]
+
+        if direction is None:
+            direction = random.choice(list(Direction))
+        self.direction = direction
+    
+    def update(self, src, tiles, player):
+        self.char = self.DIRECTION_TO_CHAR[self.direction]
+
+        new_x = self.x
+        new_y = self.y
+        if self.direction == Direction.LEFT:
+            new_x -= 1
+        elif self.direction == Direction.RIGHT:
+            new_x += 1
+        elif self.direction == Direction.UP:
+            new_y -= 1
+        elif self.direction == Direction.DOWN:
+            new_y += 1
+
+        if self.can_walk_to(new_x, new_y, tiles):
+            self.x = new_x
+            self.y = new_y
+        else:
+            old_dir = self.direction.name
+            self.direction = Direction.opposite(self.direction)

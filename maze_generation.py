@@ -22,8 +22,9 @@ MAX_PASSAGE_LENGTH = 80
 PASSAGE_INDENT = 1
 
 DEATH_TILE_DENSITY = 1 / 30
-MIN_ENEMIES_PER_ROOM = 1
-MAX_ENEMIES_PER_ROOM = 3
+MIN_ENEMIES_PER_ROOM = 2
+MAX_ENEMIES_PER_ROOM = 5
+ENEMY_TYPES = [MovingEnemy, ChasingEnemy]
 
 FINISH_TILE_DENSITY = 1 / 10
 
@@ -199,7 +200,8 @@ def generate_enemies(rooms):
         for i in range(enemy_amount):
             x = random.randint(0, room.width) + room.x
             y = random.randint(0, room.height) + room.y
-            tiles.append(MovingEnemy(x, y))
+            enemy_type = random.choice(ENEMY_TYPES)
+            tiles.append(enemy_type(x, y))
     return tiles
 
 def generate_finish_tiles(rooms):
