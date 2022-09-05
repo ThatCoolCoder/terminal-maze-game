@@ -57,7 +57,6 @@ class Room:
 
 def generate_maze():
     rooms = generate_rooms()
-    # rooms = [Room(0, 0, 10, 10)]
     start_x, start_y = generate_start_point(rooms)
     tiles = generate_tiles(rooms)
     tiles += generate_passages(rooms)

@@ -50,7 +50,7 @@ class DeathTile(Tile):
 class FinishTile(Tile):
     COLOR_PAIR_NUMBER = 4
     def __init__(self, x: int, y: int):
-        super().__init__(x, y, '\u2691')
+        super().__init__(x, y, 'F')
 
 class TileWalker(ABC, Tile):
     # Abstract class for anything that can walk on the tiles
@@ -130,6 +130,8 @@ class Player(TileWalker):
         elif key == 'KEY_RIGHT':
             new_x += 1
             moved = True
+        elif key == 'q':
+            raise KeyboardInterrupt()
 
         return (new_x, new_y, moved)
 
