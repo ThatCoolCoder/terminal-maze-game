@@ -11,6 +11,7 @@ from maze_generation import generate_maze
 class Outcome(Enum):
     WIN = 0
     LOSE = 1
+    QUIT = 2
 
 class TerminalMazeGame:
     # Pan when this close to a screen edge
@@ -34,7 +35,7 @@ class TerminalMazeGame:
         start_x, start_y, self.maze_tiles = generate_maze()
         self.player = Player(start_x, start_y)
         self.maze_tiles.append(self.player)
-        self.outcome = Outcome.LOSE
+        self.outcome = Outcome.QUIT
         self.move_count = 0
 
         self.paused = True
@@ -157,6 +158,9 @@ class TerminalMazeGame:
 
     def __show_outcome(self):
         self.stdscr.clear()
+
+        if self.outcome == Outcome.QUIT:
+            return
 
         text = 'Haha you died'
         if self.outcome == Outcome.WIN:
