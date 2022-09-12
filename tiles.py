@@ -118,19 +118,19 @@ class Player(TileWalker):
         new_x = self.x
         new_y = self.y
         moved = False
-        if key == 'KEY_UP':
+        if key == 'KEY_UP' or key.lower() == 'w' :
             new_y -= 1
             moved = True
-        elif key == 'KEY_DOWN':
+        elif key == 'KEY_DOWN' or key.lower() == 's':
             new_y += 1
             moved = True
-        elif key == 'KEY_LEFT':
+        elif key == 'KEY_LEFT' or key.lower() == 'a':
             new_x -= 1
             moved = True
-        elif key == 'KEY_RIGHT':
+        elif key == 'KEY_RIGHT' or key.lower() == 'd':
             new_x += 1
             moved = True
-        elif key == 'q':
+        elif key.lower() == 'q':
             raise KeyboardInterrupt()
 
         return (new_x, new_y, moved)
