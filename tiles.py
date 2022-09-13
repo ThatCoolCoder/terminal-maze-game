@@ -114,6 +114,7 @@ class Player(TileWalker):
         return finished
     
     def keybinds(self, scr, tiles):
+        curses.flushinp()
         key = scr.getkey()
         new_x = self.x
         new_y = self.y
