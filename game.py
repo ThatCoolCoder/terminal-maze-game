@@ -13,6 +13,11 @@ class Outcome(Enum):
     LOSE = 1
     QUIT = 2
 
+@unique
+class AfterRoundAction(Enum):
+    PLAY_AGAIN = 0
+    QUIT = 1
+
 class TerminalMazeGame:
     # Pan when this close to a screen edge
     PAN_TRIGGER_DIST_X = 20
@@ -26,10 +31,21 @@ class TerminalMazeGame:
 
     paused = True
 
-    def play_round(self, stdscr):
+    def __init__(self, stdscr):
         self.stdscr = stdscr
 
         self.__setup_curses()
+
+        self.player = Player(0, 0)
+    
+    def mainloop(self):
+        while True:
+            self.play_round()
+            action = self.__show_outcome()
+            if action == AfterRoundAction.QUIT:
+                break
+
+    def play_round(self):
         self.__update_screen_size()
 
         start_x, start_y, self.maze_tiles = generate_maze()
@@ -61,6 +77,7 @@ class TerminalMazeGame:
             try:
                 self.player.player_update(self.stdscr, self.maze_tiles)
             except KeyboardInterrupt:
+                self.outcome == Outcome.QUIT
                 break
             self.lit_area_x = self.player.x
             self.lit_area_y = self.player.y
@@ -76,8 +93,6 @@ class TerminalMazeGame:
 
             self.stdscr.refresh()
             self.move_count += 1
-    
-        self.__show_outcome()
 
     def __setup_curses(self):
         curses.start_color()
@@ -160,7 +175,7 @@ class TerminalMazeGame:
         self.stdscr.clear()
 
         if self.outcome == Outcome.QUIT:
-            return
+            return AfterRoundAction.QUIT
 
         text = 'Haha you died'
         if self.outcome == Outcome.WIN:
@@ -168,15 +183,19 @@ class TerminalMazeGame:
             score = int(max(500 - self.move_count, 0) * 3.4253)
             text += f'You scored {score}'
         
-        text += '\nPress q to exit'
+        text += '\nPress Q to exit'
+        text += '\nPress R to play again'
         self.stdscr.move(self.screen_height // 2, 0)
         self.stdscr.addstr(center_text(text, self.screen_width))
 
         self.stdscr.refresh()
 
         while True:
-            if self.stdscr.getkey() == 'q':
-                break
+            key = self.stdscr.getkey().lower()
+            if key == 'q':
+                return AfterRoundAction.QUIT
+            elif key == 'r':
+                return AfterRoundAction.PLAY_AGAIN
 
 def center_text(text: str, total_width: int):
     lines = []

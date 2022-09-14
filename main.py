@@ -2,7 +2,10 @@ import curses
 
 from game import TerminalMazeGame
 
+def main(stdscr):
+    game = TerminalMazeGame(stdscr)
+    game.mainloop()
+
 if __name__ == '__main__':
     stdscr = curses.initscr()
-    game = TerminalMazeGame()
-    curses.wrapper(game.play_round)
+    curses.wrapper(main)
