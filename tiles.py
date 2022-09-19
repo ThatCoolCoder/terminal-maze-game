@@ -162,7 +162,7 @@ class ChasingEnemy(TileWalker):
     def __init__(self, x: int, y: int):
         super().__init__(x, y, char='!')
 
-        self.COLLIDES_WITH = [MovingEnemy, ChasingEnemy, DeathTile, PassageFloorTile]
+        self.COLLIDES_WITH = [MovingEnemy, ChasingEnemy, DeathTile, PassageFloorTile, FinishTile]
         self.WALKABLE_TILES = [FloorTile]
     
     def can_see_player(self, player):
@@ -204,7 +204,7 @@ class MovingEnemy(TileWalker):
         # \u25c6 is a square tilted 45°
         super().__init__(x, y, char='\u25c6')
 
-        self.COLLIDES_WITH = [MovingEnemy, ChasingEnemy, DeathTile, PassageFloorTile]
+        self.COLLIDES_WITH = [MovingEnemy, ChasingEnemy, DeathTile, PassageFloorTile, FinishTile]
         self.WALKABLE_TILES = [FloorTile]
 
         if direction is None:
