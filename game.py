@@ -153,7 +153,7 @@ class TerminalMazeGame:
 
     def __draw_hud(self):
         message = 'Arrow keys to move. Q to quit. ' + \
-            'Your goal: get to the green F without dying. ' + \
+            'Your goal: get to the green square without dying. ' + \
             f'Move count: {self.move_count}'
         lines = textwrap.wrap(message, self.screen_width)
         for idx, line in enumerate(lines):

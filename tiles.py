@@ -50,7 +50,7 @@ class DeathTile(Tile):
 class FinishTile(Tile):
     COLOR_PAIR_NUMBER = 4
     def __init__(self, x: int, y: int):
-        super().__init__(x, y, 'F')
+        super().__init__(x, y, '\u2588')
 
 class TileWalker(ABC, Tile):
     # Abstract class for anything that can walk on the tiles
